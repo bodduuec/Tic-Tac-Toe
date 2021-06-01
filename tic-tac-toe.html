@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+		*, *::before, *::after{
+			box-sizing: content-box;
+		}
+
+		body {
+			margin: 0;
+		}
+
+		.board {
+			display: grid;
+			height: 100vh;
+			width: 100vw;
+			grid-template-columns: repeat(3, auto);
+			justify-content: center;
+			align-content: center;
+		}
+
+		.board .cell {
+			height: 100px;
+			width: 100px;
+			border: 1px solid black;
+			position: relative;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+		}
+
+		.cell:nth-child(1), 
+		.cell:nth-child(2), 
+		.cell:nth-child(3) {
+			border-top: none;
+		}
+
+		.cell:nth-child(3n + 1) {
+			border-left: none;
+		}
+
+		.cell:nth-child(7), 
+		.cell:nth-child(8), 
+		.cell:nth-child(9) {
+			border-bottom: none;
+		}
+
+		.cell:nth-child(3n + 3) {
+			border-right: none;
+		}
+
+		.cell.x,
+		.cell.circle {
+			cursor: not-allowed;;
+		}
+
+		.cell:not(.x):not(.circle) {
+			cursor: pointer;
+		}
+
+		.cell.x::before,
+		.cell.x::after,
+		.board.x .cell:not(.x):not(.circle):hover::before,
+		.board.x .cell:not(.x):not(.circle):hover::after {
+			content: '';
+			position: absolute;
+			width: 15%;
+			height: 90%;
+			background-color: black;
+		}
+
+		.board.x .cell:not(.x):not(.circle):hover::before,
+		.board.x .cell:not(.x):not(.circle):hover::after {
+			background-color: lightgray;
+		}
+
+		.cell.x::before,
+		.board.x .cell:not(.x):not(.circle):hover::before {
+			transform: rotate(45deg);
+		}
+
+		.cell.x::after,
+		.board.x .cell:not(.x):not(.circle):hover::after {
+			transform: rotate(-45deg);
+		}
+
+		.cell:nth-child(3n + 3) {
+			border-right: none;
+		}
+
+		.cell.circle::before,
+		.cell.circle::after,
+		.board.circle .cell:not(.x):not(.circle):hover::before,
+		.board.circle .cell:not(.x):not(.circle):hover::after {
+			content: '';
+			position: absolute;
+			border-radius: 50%;
+		}
+
+		.cell.circle::before,
+		.board.circle .cell:not(.x):not(.circle):hover::before {
+			width: 90%;
+			height: 90%;
+			background-color: black;
+		}
+
+		.board.circle .cell:not(.x):not(.circle):hover::before {
+			background-color: lightgray;
+		}
+
+
+		.cell.circle::after,
+		.board.circle .cell:not(.x):not(.circle):hover::after {
+			width: 60%;
+			height: 60%;
+			background-color: white;
+		}
+
+		.winning-message-popup {
+			position: fixed;
+			background-color: rgba(0, 0, 0, 0.5);
+			width: 100%;
+			height: 100%;
+			top: 0;
+			left: 0;
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+			display: none;
+		}
+
+		.winning-message-popup.show {
+			display: flex;
+		}
+
+		.winning-message {
+			color: white;
+			font-size: 40px;
+			font-weight: bold;
+		}
+
+		.restart-button {
+			padding: 5px 10px;
+			font-weight: bold;
+			font-size: 15px;
+			cursor: pointer;
+			border: none;
+		}
+	</style>
+</head>
+<body>
+    <div class="board" id="board">
+        <div class="cell"></div>
+        <div class="cell"></div>
+        <div class="cell"></div>
+        <div class="cell"></div>
+        <div class="cell"></div>
+        <div class="cell"></div>
+        <div class="cell"></div>
+        <div class="cell"></div>
+        <div class="cell"></div>
+    </div>
+
+    <div class="winning-message-popup">
+        <div class="winning-message" id="winning-message"></div>
+        <button class="restart-button">Restart</button>
+    </div>
+	<script>
+		const WIN_COMBINATIONS = [
+			[0, 1, 2],
+			[3, 4, 5],
+			[6, 7, 8],
+			[0, 3, 6],
+			[1, 4, 7],
+			[2, 5, 8],
+			[0, 4, 8],
+			[2, 4, 6]
+		];
+		const X_CLASS = 'x';
+		const CIRCLE_CLASS = 'circle';
+
+		const board = document.querySelector('#board');
+		const cells = document.querySelectorAll('.cell');
+		let circleTurn = false;
+
+		function startGame() {
+			resetData();
+			addClickEvents();
+		}
+
+		function resetData() {
+			circleTurn = false;
+			cells.forEach(cell => {
+				cell.classList.remove(X_CLASS);
+				cell.classList.remove(CIRCLE_CLASS);
+			});
+			board.classList.remove(X_CLASS);
+			board.classList.remove(CIRCLE_CLASS);
+			board.classList.add(X_CLASS);
+			document.querySelector('.winning-message-popup').classList.remove('show');
+		}
+
+		function addClickEvents() {
+			cells.forEach(cell => {
+				cell.removeEventListener('click', handleClick);
+				cell.addEventListener('click', handleClick, {once: true});
+			});
+			document.querySelector('.restart-button').removeEventListener('click', startGame);
+			document.querySelector('.restart-button').addEventListener('click', startGame);
+		}
+
+		function handleClick(event) {
+			const cell = event.target;
+			fillCell(cell);
+			if(checkWin()){
+				showMessage('win');
+			} else if(checkDraw()){
+				showMessage('draw');
+			} else {
+				circleTurn = !circleTurn;
+			}
+		}
+
+		function fillCell(cell) {
+			cell.classList.add(circleTurn ? CIRCLE_CLASS : X_CLASS);
+			board.classList.remove(circleTurn ? CIRCLE_CLASS : X_CLASS);
+			board.classList.add(!circleTurn ? CIRCLE_CLASS : X_CLASS);
+		}
+
+		function checkWin() {
+			return WIN_COMBINATIONS.some(combination => {
+				return combination.every(index => {
+					return cells[index].classList.contains(circleTurn ? CIRCLE_CLASS : X_CLASS);
+				});
+			});
+		}
+
+		function showMessage(msg) {
+			document.querySelector('.winning-message-popup').classList.add('show');
+			if(msg === 'win') {
+				document.querySelector('.winning-message').innerHTML = `${circleTurn ? "CIRCLE'S" : "X's"} WIN`;
+			} else {
+				document.querySelector('.winning-message').innerHTML = `DRAW`;
+			}
+		}
+
+		function checkDraw() {
+			let draw = true;
+			cells.forEach(cell => {
+				if(!cell.classList.contains(CIRCLE_CLASS) && !cell.classList.contains(X_CLASS)){
+					draw = false;
+					return;
+				}
+			});
+			return draw;
+		}
+
+		startGame();
+	</script>
+</body>
+</html>
